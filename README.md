@@ -18,7 +18,7 @@ Follow these steps to run the project locally on your system:
 
 ## Clone the repository
 
-[git clone https://github.com/your-username/url-shortener.git](https://github.com/anilkumark215/URL-Shortener-App)
+https://github.com/anilkumark215/URL-Shortener-App
 cd url-shortener
 Open the project
 
