@@ -1,4 +1,4 @@
-🛠️ Tech Stack
+## 🛠️ Tech Stack
 This URL Shortener application is built using the following technologies:
 
 HTML5 – For structured markup and semantic layout.
@@ -11,24 +11,12 @@ JavaScript (ES6+) – For all application logic, routing, API simulation, and DO
 
 Vanilla JS – Used without external frameworks for lightweight and efficient single-page application behavior.
 
-If you want, I can help you write the full README with:
 
-Project description
 
-Features
-
-Installation steps
-
-Usage instructions
-
-Screenshots placeholders
-
-License section
-
-💻 Local Setup and Run
+## 💻 Local Setup and Run
 Follow these steps to run the project locally on your system:
 
-Clone the repository
+## Clone the repository
 
 git clone https://github.com/your-username/url-shortener.git
 cd url-shortener
