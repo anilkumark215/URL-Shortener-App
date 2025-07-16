@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - Daphnis Labs Internship</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+        }
+        .url-card {
+            transition: all 0.3s ease;
+        }
+        .url-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .analytics-chart {
+            height: 200px;
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <!-- Navigation -->
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <img src="https://placehold.co/40x40" alt="Daphnis Labs logo - abstract letter D with a gradient from blue to purple" class="h-10 w-10 rounded-full">
+                    <h1 class="text-xl font-bold">Short.ly</h1>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="navigate('home')" class="px-3 py-1 rounded hover:bg-blue-700 transition">Home</button>
+                    <button onclick="navigate('stats')" class="px-3 py-1 rounded hover:bg-blue-700 transition">Analytics</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8" id="content">
+        <!-- Home View (will be injected here) -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2023 URL Shortener - Daphnis Labs Internship Assignment</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Implementation -->
+    <script>
+        // Simulated Database
+        const urlDatabase = [];
+        let currentUser = null;
+
+        // Utility Functions
+        function generateShortCode() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+
+        function isValidUrl(url) {
+            try {
+                new URL(url);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Router
+        function navigate(view, code = null) {
+            const content = document.getElementById('content');
+            
+            if (view === 'home') {
+                renderHome();
+            } else if (view === 'stats') {
+                renderStats();
+            } else if (view === 'redirect' && code) {
+                handleRedirect(code);
+            } else if (view === 'code-stats' && code) {
+                renderCodeStats(code);
+            }
+        }
+
+        // API Simulation
+        function shortenUrl(longUrl) {
+            // Input validation
+            if (!isValidUrl(longUrl)) {
+                throw new Error('Invalid URL format. Please include http:// or https://');
+            }
+
+            const existingEntry = urlDatabase.find(entry => entry.longUrl === longUrl);
+            if (existingEntry) {
+                return existingEntry;
+            }
+
+            const newEntry = {
+                id: Date.now(),
+                longUrl,
+                shortCode: generateShortCode(),
+                clicks: 0,
+                createdAt: new Date().toISOString(),
+                createdBy: currentUser || 'anonymous',
+                clickHistory: []
+            };
+
+            urlDatabase.push(newEntry);
+            return newEntry;
+        }
+
+        function getUrlStats(shortCode) {
+            const entry = urlDatabase.find(entry => entry.shortCode === shortCode);
+            if (!entry) {
+                throw new Error('Short URL not found');
+            }
+            return entry;
+        }
+
+        function handleRedirect(shortCode) {
+            try {
+                const entry = getUrlStats(shortCode);
+                entry.clicks++;
+                entry.clickHistory.push({
+                    timestamp: new Date().toISOString(),
+                    ip: 'simulated-' + Math.floor(Math.random() * 1000)
+                });
+                
+                // In a real app, we would redirect here
+                renderRedirectInfo(entry.longUrl);
+            } catch (error) {
+                renderError(error.message);
+            }
+        }
+
+        // Render Functions
+        function renderHome() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="max-w-3xl mx-auto">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Shorten Your Links</h2>
+                        <p class="text-gray-600 max-w-lg mx-auto">Create short, memorable URLs and track their performance with our powerful analytics dashboard.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+                        <form id="urlForm" onsubmit="event.preventDefault(); handleFormSubmit()" class="space-y-4">
+                            <div>
+                                <label for="longUrl" class="block text-sm font-medium text-gray-700 mb-1">Enter your long URL</label>
+                                <input type="url" id="longUrl" required 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                    placeholder="https://example.com/very-long-url">
+                            </div>
+                            <button type="submit" class="gradient-bg text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full">
+                                Shorten URL
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="resultContainer" class="hidden">
+                        <!-- Will be filled with result after form submission -->
+                    </div>
+
+                    <div class="mt-12">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Recently Shortened URLs</h3>
+                        <div id="recentUrls" class="space-y-4">
+                            ${renderRecentUrls()}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRecentUrls() {
+            if (urlDatabase.length === 0) {
+                return `<p class="text-gray-500 text-center py-8">No URLs shortened yet. Create your first short URL above!</p>`;
+            }
+
+            const recentUrls = [...urlDatabase].reverse().slice(0, 5);
+            return recentUrls.map(url => `
+                <div class="url-card bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div class="mb-2 md:mb-0 flex-1 truncate">
+                            <a href="${url.longUrl}" target="_blank" class="text-gray-600 hover:text-gray-800 hover:underline">${url.longUrl}</a>
+                            <div>
+                                <a href="#redirect/${url.shortCode}" onclick="navigate('redirect', '${url.shortCode}')" class="text-blue-500 hover:text-blue-700 font-medium">short.ly/${url.shortCode}</a>
+                                <span class="text-sm text-gray-500 ml-2">${url.clicks} clicks</span>
+                            </div>
+                        </div>
+                        <button onclick="navigate('code-stats', '${url.shortCode}')" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition">
+                            View Stats
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderStats() {
+            if (urlDatabase.length === 0) {
+                renderHome();
+                document.getElementById('content').insertAdjacentHTML('afterbegin', `
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
+                        <p class="text-yellow-700">No URLs found to analyze. Create some shortened URLs first.</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const totalClicks = urlDatabase.reduce((sum, url) => sum + url.clicks, 0);
+            const mostPopular = [...urlDatabase].sort((a, b) => b.clicks - a.clicks)[0];
+
+            document.getElementById('content').innerHTML = `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800">Analytics Dashboard</h2>
+                        <button onclick="navigate('home')" class="text-blue-500 hover:text-blue-700 font-medium">
+                            ← Back to shortening
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-gray-500 text-sm font-medium uppercase tracking-wider mb-1">Total URLs</h3>
+                            <p class="text-3xl font-bold text-gray-800">${urlDatabase.length}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-gray-500 text-sm font-medium uppercase tracking-wider mb-1">Total Clicks</h3>
+                            <p class="text-3xl font-bold text-gray-800">${totalClicks}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-gray-500 text-sm font-medium uppercase tracking-wider mb-1">Most Popular</h3>
+                            <p class="text-lg font-semibold text-gray-800 truncate">${mostPopular.longUrl}</p>
+                            <p class="text-blue-500">${mostPopular.clicks} clicks</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow mb-8">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+                        <div class="analytics-chart flex items-end justify-between pt-4 pb-2 px-4">
+                            ${renderClickChart()}
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">All Shortened URLs</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Short URL</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicks</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${renderUrlTableRows()}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderClickChart() {
+            // Simulate chart with bars
+            const last7Days = Array.from({length: 7}, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                return date.toISOString().split('T')[0];
+            }).reverse();
+
+            const dailyClicks = last7Days.map(date => {
+                return urlDatabase.reduce((sum, url) => {
+                    return sum + url.clickHistory.filter(click => 
+                        click.timestamp.startsWith(date)
+                    ).length;
+                }, 0);
+            });
+
+            const maxClicks = Math.max(...dailyClicks, 1);
+
+            return dailyClicks.map((clicks, i) => {
+                const heightPercentage = (clicks / maxClicks) * 100;
+                return `
+                    <div class="flex flex-col items-center" style="width: 12%">
+                        <div 
+                            class="bg-blue-500 w-full rounded-t-sm transition hover:bg-blue-600" 
+                            style="height: ${heightPercentage}%"
+                            title="${clicks} clicks on ${last7Days[i]}"
+                        ></div>
+                        <span class="text-xs text-gray-500 mt-1">${last7Days[i].split('-').slice(1).join('/')}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderUrlTableRows() {
+            return [...urlDatabase].reverse().map(url => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="#redirect/${url.shortCode}" onclick="navigate('redirect', '${url.shortCode}')" class="text-blue-500 hover:text-blue-700">short.ly/${url.shortCode}</a>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900 truncate max-w-xs">${url.longUrl}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${new Date(url.createdAt).toLocaleDateString()}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${url.clicks}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderRedirectInfo(longUrl) {
+            content.innerHTML = `
+                <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg text-center">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Redirecting...</h2>
+                    <p class="mb-4">You are being redirected to:</p>
+                    <p class="mb-6 p-2 bg-gray-100 rounded break-all">${longUrl}</p>
+                    <button onclick="navigate('home')" class="gradient-bg text-white px-4 py-2 rounded hover:opacity-90 transition">
+                        ← Back to Shortener
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderCodeStats(shortCode) {
+            try {
+                const entry = getUrlStats(shortCode);
+                
+                content.innerHTML = `
+                    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-800">Link Analytics</h2>
+                            <button onclick="navigate('stats')" class="text-blue-500 hover:text-blue-700 font-medium">
+                                ← Back to dashboard
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Short URL</h3>
+                                <p class="text-lg font-mono text-blue-500 break-all">short.ly/${entry.shortCode}</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Original URL</h3>
+                                <p class="text-lg break-all">${entry.longUrl}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg text-center">
+                                <p class="text-gray-500 text-sm mb-1">Total Clicks</p>
+                                <p class="text-3xl font-bold text-gray-800">${entry.clicks}</p>
+                            </div>
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg text-center">
+                                <p class="text-gray-500 text-sm mb-1">Created</p>
+                                <p class="text-lg font-medium text-gray-800">${new Date(entry.createdAt).toLocaleString()}</p>
+                            </div>
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg text-center">
+                                <p class="text-gray-500 text-sm mb-1">Created By</p>
+                                <p class="text-lg font-medium text-gray-800">${entry.createdBy}</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-medium text-gray-800 mb-3">Click History</h3>
+                            ${entry.clickHistory.length > 0 ? `
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <div class="divide-y divide-gray-200">
+                                        ${[...entry.clickHistory].reverse().map(click => `
+                                            <div class="py-2">
+                                                <div class="flex justify-between">
+                                                    <span class="font-medium">${new Date(click.timestamp).toLocaleString()}</span>
+                                                    <span class="text-gray-500 text-sm">${click.ip}</span>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : `
+                                <p class="text-gray-500">No clicks recorded yet</p>
+                            `}
+                        </div>
+
+                        <button onclick="navigate('home')" class="gradient-bg text-white px-4 py-2 rounded hover:opacity-90 transition w-full">
+                            Create Another Short Link
+                        </button>
+                    </div>
+                `;
+            } catch (error) {
+                renderError(error.message);
+            }
+        }
+
+        function renderError(message) {
+            document.getElementById('content').innerHTML = `
+                <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+                    <div class="text-red-500 font-medium mb-4">Error: ${message}</div>
+                    <button onclick="navigate('home')" class="gradient-bg text-white px-4 py-2 rounded hover:opacity-90 transition w-full">
+                        ← Back to Home
+                    </button>
+                </div>
+            `;
+        }
+
+        function handleFormSubmit() {
+            const longUrlInput = document.getElementById('longUrl');
+            const resultContainer = document.getElementById('resultContainer');
+            
+            try {
+                const shortenedUrl = shortenUrl(longUrlInput.value);
+                
+                resultContainer.innerHTML = `
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                        <h3 class="text-lg font-medium text-blue-800 mb-2">Success!</h3>
+                        <p class="mb-4">Your shortened URL is:</p>
+                        <div class="bg-white p-3 rounded border border-blue-200 mb-3 flex items-center justify-between">
+                            <a id="shortUrl" href="#redirect/${shortenedUrl.shortCode}" 
+                               onclick="navigate('redirect', '${shortenedUrl.shortCode}')" 
+                               class="text-blue-500 hover:text-blue-700 break-all">
+                                short.ly/${shortenedUrl.shortCode}
+                            </a>
+                            <button onclick="copyToClipboard()" class="text-sm bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition">
+                                Copy
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-500">Redirects to: ${shortenedUrl.longUrl}</p>
+                    </div>
+                `;
+                resultContainer.classList.remove('hidden');
+                longUrlInput.value = '';
+                
+                // Update recent URLs list
+                document.getElementById('recentUrls').innerHTML = renderRecentUrls();
+            } catch (error) {
+                resultContainer.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+                        <p class="text-red-600">${error.message}</p>
+                    </div>
+                `;
+                resultContainer.classList.remove('hidden');
+            }
+        }
+
+        function copyToClipboard() {
+            const shortUrl = document.getElementById('shortUrl');
+            const range = document.createRange();
+            range.selectNode(shortUrl);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            
+            alert('Copied to clipboard!');
+        }
+
+        // Handle initial routing based on hash
+        window.addEventListener('load', () => {
+            currentUser = localStorage.getItem('currentUser') || 'demo-user';
+            
+            const hash = window.location.hash;
+            if (hash.startsWith('#redirect/')) {
+                const code = hash.split('#redirect/')[1];
+                navigate('redirect', code);
+            } else if (hash.startsWith('#stats/')) {
+                const code = hash.split('#stats/')[1];
+                navigate('code-stats', code);
+            } else if (hash === '#stats') {
+                navigate('stats');
+            } else {
+                navigate('home');
+            }
+        });
+
+        // Initialize with the home view
+        navigate('home');
+    </script>
+</body>
+</html>
